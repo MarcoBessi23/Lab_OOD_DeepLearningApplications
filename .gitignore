@@ -1,0 +1,18 @@
+# Ignora gli ambienti virtuali
+venv/
+env/
+
+# Ignora file temporanei di sistema
+.DS_Store
+Thumbs.db
+Fake_dataset.py
+
+# Ignora i file compilati di Python
+__pycache__/
+*.py[cod]
+
+# Ignora eventuali cartelle di librerie o dipendenze
+node_modules/
+data
+AUC.png
+Roc_CURVE.png
