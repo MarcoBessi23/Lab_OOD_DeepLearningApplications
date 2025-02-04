@@ -3,11 +3,6 @@
 # ODIN is a very simple approach, and you can already start experimenting 
 # by implementing a temperature hyperparameter in your base model and doing a grid search on T and epsilon.
 
-### Exercise 3.2: Implement JARN
-#In exercise 2.2 you already implemented Jacobian-regularized learning to make your model more robust to adversarial samples. Add a *discriminator* to your model to encourage the adversarial samples used for regularization to be more *salient*.
-#
-#See [the JARN paper](https://arxiv.org/abs/1912.10185) for more details.
-#
 #### Exercise 3.3: Experiment with *targeted* adversarial attacks
 #Implement the targeted Fast Gradient Sign Method to generate adversarial samples that *imitate* samples from a specific class. Evaluate your adversarial samples qualitatively and quantitatively.
 import os
@@ -24,22 +19,13 @@ from sklearn import metrics
 from NeuralNet import CNN, heatmap
 from torch.utils.data import Subset
 from sklearn.metrics import roc_curve, auc
-from Fake_dataset import UniformNoiseDataset
 
-#transform = transforms.Compose(
-#    [transforms.ToTensor(),
-#     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)) ])
 
 batch_size = 200
-
-#trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-#                                        download=False, transform=transform)
-#trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-#                                          shuffle=True)
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                        download=False, transform=transform)
@@ -54,11 +40,6 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=batch_size,
 fakeset = FakeData(size=len(testset), image_size=(3, 32, 32), transform=transform)
 fakeloader = torch.utils.data.DataLoader(fakeset, batch_size=batch_size,
                                          shuffle=False)
-
-
-#uniform_set = UniformNoiseDataset(size=len(testset), image_size=(3, 32, 32), transform=transform)
-#fakeloader_uniform = torch.utils.data.DataLoader(uniform_set, batch_size=batch_size, shuffle=False, num_workers=8)
-
 
 classes = ('plane', 'car', 'bird', 'cat',
            'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
