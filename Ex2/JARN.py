@@ -75,8 +75,34 @@ def FGSM_attack(model, test_loader, eps):
     return accuracy
 
 
-print(FGSM_attack(model, test_loader, eps = 0.4))
+#print(FGSM_attack(model, test_loader, eps = 0.4))
 
-def PGD_attack(image, model, alpha, eps, iter):
-    image = image.clone().detach().requires_grad_(True)
+def PGD_perturbation(image, labels, model, loss, alpha, eps,  iter):
+    original_image = image.clone().detach()
+    image          = image.detach()
+    for _ in range(iter):
+        image.requires_grad = True
+        logit = model(image)
+        l     = loss(logit, labels)
+        model.zero_grad()
+        l.backward()
+        gradient = image.grad
+        perturbed_image = image + alpha*gradient.sign()
+        proj_dir = torch.clamp(perturbed_image - original_image, min=-eps, max=eps) #direction in R(28x28) of the projection
+        image    = torch.clamp(original_image + proj_dir, min=0, max=1).detach_()      #projection operation
+    return image
 
+def PGD_attack(model, loss, test_loader, alpha,eps, iter):
+    accuracy = 0
+    for i, data in enumerate(test_loader):
+        print(f'iteration {i}')
+        im, lab = data
+        perturbed_im = PGD_perturbation(im, lab, model,loss, alpha, eps, iter)
+        with torch.no_grad():
+            logit_perturbed = model(perturbed_im)
+            _, predicted = torch.max(F.softmax(logit_perturbed, 1), 1)
+            accuracy += (predicted == lab).sum().item()/len(lab) #accuracy on the specific batch
+    accuracy /= len(test_loader)
+    return accuracy
+
+print(PGD_attack(model, loss, test_loader, alpha = 1, eps = 0.3 ,iter = 5))
