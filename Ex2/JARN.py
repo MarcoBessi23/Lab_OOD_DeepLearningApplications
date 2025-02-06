@@ -79,6 +79,8 @@ def FGSM_attack(model, test_loader, eps):
 
 def PGD_perturbation(image, labels, model, loss, alpha, eps,  iter):
     original_image = image.clone().detach()
+    x_max = original_image + eps
+    x_min = original_image - eps
     image          = image.detach()
     for _ in range(iter):
         image.requires_grad = True
@@ -88,8 +90,10 @@ def PGD_perturbation(image, labels, model, loss, alpha, eps,  iter):
         l.backward()
         gradient = image.grad
         perturbed_image = image + alpha*gradient.sign()
-        proj_dir = torch.clamp(perturbed_image - original_image, min=-eps, max=eps) #direction in R(28x28) of the projection
-        image    = torch.clamp(original_image + proj_dir, min=0, max=1).detach_()      #projection operation
+        image = torch.min(x_max, torch.max(x_min, perturbed_image)).detach()
+
+        #proj_dir = torch.clamp(perturbed_image - original_image, min=-eps, max=eps) #direction in R(28x28) of the projection
+        #image    = torch.clamp(original_image + proj_dir, min=0, max=1).detach_()      #projection operation
     return image
 
 def PGD_attack(model, loss, test_loader, alpha,eps, iter):
@@ -105,4 +109,27 @@ def PGD_attack(model, loss, test_loader, alpha,eps, iter):
     accuracy /= len(test_loader)
     return accuracy
 
-print(PGD_attack(model, loss, test_loader, alpha = 1, eps = 0.3 ,iter = 5))
+#print(PGD_attack(model, loss, test_loader, alpha = 0.05, eps = 0.3 ,iter = 5))
+
+def plotting(original, adv):
+    f, axarr = plt.subplots(1,2)
+    axarr[0].imshow(original.detach().numpy().reshape(28, 28), cmap='gray')
+    axarr[1].imshow(adv.detach().numpy().reshape(28, 28), cmap='gray')
+    plt.show()
+
+im, lab = next(iter(test_loader))
+perturbed = PGD_perturbation(im, lab, model,loss, alpha= 0.5, eps= 0.3, iter= 5)
+#plotting(im[0], perturbed[0])
+
+#_, predicted = torch.max(F.softmax(model(im), 1), 1)
+#accuracy = (predicted == lab).sum().item()/len(lab)
+#print(accuracy)
+#
+#_, predicted = torch.max(F.softmax(model(perturbed), 1), 1)
+#accuracy = (predicted == lab).sum().item()/len(lab)
+#print(accuracy)
+#
+from Neural_net import Discriminator
+disc = Discriminator()
+v = disc(im)
+print(v.shape)
