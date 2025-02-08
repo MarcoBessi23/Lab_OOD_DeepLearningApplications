@@ -17,7 +17,8 @@ from torch import nn
 import numpy as np
 from sklearn import metrics
 from torch.utils.data import Subset
-from Neural_net import CNN, Trainer
+from Neural_net import CNN, Discriminator
+from TrainJarn import Trainer, JARN_trainer
 
 transform = transforms.Compose([
     transforms.ToTensor(),
@@ -37,14 +38,14 @@ test_loader = torch.utils.data.DataLoader(testset, batch_size = batch_size, shuf
 
 model = CNN()
 model.to(device)
-model.load_state_dict(torch.load('Ex2/model_parameters/standard_CNN.pth', map_location = torch.device(device)))
+#model.load_state_dict(torch.load('Ex2/model_parameters/standard_CNN.pth', map_location = torch.device(device)))
 
 
 #model = model.load_state_dict(torch.load('Ex2/model_parameters/standard_CNN.pth'))
 #model.to(device)
 
 loss = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+#optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
 
 #trainer = Trainer(model, loss, optimizer, 3, device)
@@ -129,7 +130,91 @@ perturbed = PGD_perturbation(im, lab, model,loss, alpha= 0.5, eps= 0.3, iter= 5)
 #accuracy = (predicted == lab).sum().item()/len(lab)
 #print(accuracy)
 #
-from Neural_net import Discriminator
+model = CNN()
 disc = Discriminator()
-v = disc(im)
-print(v.shape)
+apt = nn.Sequential(
+        nn.Conv2d(1,1,1),
+        nn.Tanh()
+    )
+
+opt_model = torch.optim.Adam(model.parameters(), lr=1e-3)
+opt_disc = torch.optim.Adam(disc.parameters(), lr = 1e-3)
+opt_apt = torch.optim.Adam(apt.parameters(), lr = 1e-3)
+
+JARN = JARN_trainer(model, disc, apt, loss, opt_model, opt_disc, opt_apt, epochs=3, lam_adv= 1, epsilon = 0.02, device= device)
+JARN.train_model(train_loader, test_loader, update_adv=10)
+JARN.save_model_parameters()
+
+#def prepare_disc(im, jac):
+#    disc_jac  = disc(jac)
+#    disc_real = disc(im)
+#    discrim   = torch.cat([disc_real, disc_jac])
+#    real_lab  = torch.ones_like(disc_real)
+#    fake_lab  = torch.zeros_like(disc_jac)
+#    adv_lab   = torch.cat([real_lab, fake_lab])
+#    
+#    return discrim, adv_lab
+#
+#
+#lam_adv = 1
+#image, labels = next(iter(train_loader))
+#image.requires_grad = True
+#logit = model(image)
+#l_cls = loss(logit, labels)
+#model.zero_grad()
+#l_cls.backward(retain_graph = True)
+#gradient = image.grad
+#jacobian = apt(gradient)
+#adjusted_jacobian = apt(jacobian)
+#discrim, adv_lab = prepare_disc(image, adjusted_jacobian)
+
+#disc_jac  = disc(adjusted_jacobian)
+#disc_real = disc(image)
+#discrim   = torch.cat([disc_real, disc_jac])
+#real_lab  = torch.ones_like(disc_real)
+#fake_lab  = torch.zeros_like(disc_jac)
+#adv_lab   = torch.cat([real_lab, fake_lab])
+#print(discrim)
+#print(adv_lab)
+
+
+
+
+#BCE = nn.BCELoss()
+#l_adv = BCE(discrim, adv_lab)
+#l = l_cls + lam_adv * l_adv
+#
+#model.zero_grad()
+#l.backward()
+#opt_model.step()
+
+##UPDATE ADAPTOR
+#disc_jac  = disc(adjusted_jacobian.detach())
+#disc_real = disc(image)
+#discrim   = torch.cat([disc_real, disc_jac])
+#real_lab  = torch.ones_like(disc_real)
+#fake_lab  = torch.zeros_like(disc_jac)
+#adv_lab   = torch.cat([real_lab, fake_lab])
+
+#discrim, adv_lab = prepare_disc(image, adjusted_jacobian.detach())
+#l_adv = BCE(discrim, adv_lab)
+#apt.zero_grad()
+#l_adv.backward()
+#opt_apt.step()
+
+
+##UPDATE DISCRIMINATOR
+
+#disc_jac  = disc(adjusted_jacobian.detach())
+#disc_real = disc(image)
+#discrim   = torch.cat([disc_real, disc_jac])
+#real_lab  = torch.ones_like(disc_real)
+#fake_lab  = torch.zeros_like(disc_jac)
+#adv_lab   = torch.cat([real_lab, fake_lab])
+
+#discrim, adv_lab = prepare_disc(image, adjusted_jacobian.detach())
+#l_adv = BCE(discrim, adv_lab)
+#disc.zero_grad()
+#l_disc = -l_adv
+#l_disc.backward()
+#opt_disc.step()
