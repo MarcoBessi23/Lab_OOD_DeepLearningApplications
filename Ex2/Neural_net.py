@@ -43,22 +43,22 @@ class Discriminator(nn.Module):
     def __init__(self):
         super().__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 64, kernel_size= 5, dilation=1, padding = 1),
+            nn.Conv2d(1, 64, kernel_size= 3, dilation=1, padding = 1, stride = 2),
             nn.BatchNorm2d(64),
             nn.MaxPool2d(2),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size= 5, dilation=1, padding = 1),
+            nn.Conv2d(64, 128, kernel_size= 3, dilation=1, padding = 1, stride = 2),
             nn.BatchNorm2d(128),
             nn.ReLU()
         )
         self.classifier = nn.Sequential(
             nn.AvgPool2d(2),
             nn.Flatten(),
-            nn.Linear(3200,64),
+            nn.Linear(512,64),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Linear(64, 1),
-            nn.Sigmoid()
-        )
+            )
     
     def forward(self, x):
         x = self.conv(x)

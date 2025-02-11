@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import os
-
+from torchvision import transforms
 
 
 class Trainer():
@@ -21,7 +21,6 @@ class Trainer():
 
 
     def train_epoch(self, training_loader):
-        
         self.model.train()
         running_loss = 0
         train_acc = 0
@@ -39,9 +38,7 @@ class Trainer():
             #CALCULATE TRAIN ACCURACY
             with torch.no_grad():
                 _, predicted = torch.max(outputs, 1)
-                #total   += labels.size(0)
                 train_acc += (predicted == labels).sum().item()/len(labels) #accuracy on the specific batch
-
 
         #Divide for the batch size
         running_loss /= len(training_loader)
@@ -111,6 +108,8 @@ class Trainer():
         plt.savefig(path_accuracy)
         plt.close()
 
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class JARN_trainer():
     def __init__(self, model, discriminator, apt, loss, optimizer_model , optimizer_disc, optimizer_apt, epochs, lam_adv, epsilon, device = None):
@@ -141,62 +140,61 @@ class JARN_trainer():
         return discrim, adv_lab
 
     def train_epoch(self, train_loader, update_adv):
-        self.model.to(self.device)
-        self.apt.to(self.device)
-        self.disc.to(self.device)
         self.model.train()
-        self.apt.train()
-        self.disc.train()
         train_acc = 0
         running_loss = 0
-        BCE = nn.BCELoss()
-        
+        BCE = nn.BCEWithLogitsLoss()
+
         for i, data in enumerate(train_loader):
-            print(f'iteration number: {i}')
+            if i % 10 == 0:  
+                logging.info(f"Iteration: {i}")
             image, label = data
             image, label = image.to(self.device), label.to(self.device)
-            x = image.clone().detach()
-            x.requires_grad = True
-            logit = self.model(x)
-            l_cls = self.loss(logit, label)
-            self.model.zero_grad()
-            l_cls.backward(retain_graph = True)
 
-            jacobian = x.grad
+            image = image + torch.empty_like(image).uniform_(-self.eps, self.eps)
+            self.opt_model.zero_grad()
+            image.requires_grad = True
+            logit = self.model(image)
+            l_cls = self.loss(logit, label)
+
+            pred_jac  = self.model(image)
+            loss_jac  = self.loss(pred_jac, label)
+            jacobian,  = torch.autograd.grad(loss_jac, image, create_graph= True)
+
+            #jacobian = transforms.Normalize((0.1307,), (0.3081,))(jacobian)
             adjusted_jacobian = self.apt(jacobian)
             discrim, adv_lab = self.prepare_disc(image, adjusted_jacobian)
-            
             l_adv = BCE(discrim, adv_lab)
             l = l_cls + self.lam_adv * l_adv
-            
+
             #UPDATE MODEL PARAMETERS
-            self.model.zero_grad()
             l.backward()
             self.opt_model.step()
 
             #UPDATE APT PARAMETERS
-            discrim, adv_lab = self.prepare_disc(image, adjusted_jacobian.detach())
-            l_adv = BCE(discrim, adv_lab)
-            self.apt.zero_grad()
-            l_adv.backward()
+
+            self.opt_apt.zero_grad()
+            discrim_apt, adv_lab_apt = self.prepare_disc(image, adjusted_jacobian.detach())
+            l_apt = BCE(discrim_apt, adv_lab_apt)
+            l_apt.backward()
             self.opt_apt.step()
 
             if i%update_adv==0:
                 #UPDATE DISCRIMINATOR PARAMETERS
-                discrim, adv_lab = self.prepare_disc(image, adjusted_jacobian.detach())
-                l_adv = BCE(discrim, adv_lab)
-                self.disc.zero_grad()
-                l_disc = -l_adv
+                self.opt_disc.zero_grad()
+                adjusted_jacobian = self.apt(jacobian.detach())
+                discrim_disc, adv_lab_disc = self.prepare_disc(image, adjusted_jacobian)
+                l_disc = -BCE(discrim_disc, adv_lab_disc)
                 l_disc.backward()
                 self.opt_disc.step()
 
             #CALCULATE TRAIN ACCURACY
             running_loss += l.item()
             
-            with torch.no_grad():
-                logit = self.model(image)
-                _, prediction = torch.max(F.softmax(logit, 1),1)
-                train_acc += (prediction == label).sum().item()/len(label) #accuracy on the specific batch
+            
+                #logit = self.model(image)
+            _, prediction = torch.max(F.softmax(logit, 1),1)
+            train_acc += (prediction == label).sum().item()/len(label) #accuracy on the specific batch
 
         #Divide for the batch size
         running_loss /= len(train_loader)
@@ -211,16 +209,19 @@ class JARN_trainer():
         for i, data in enumerate(test_loader):
             im, lab = data
             im, lab = im.to(self.device), lab.to(self.device)
-            logit = self.model(im)
-            _, prediction = torch.max(F.softmax(logit, 1),1)
-            accuracy += (prediction==lab).sum().item()/len(lab)
+            with torch.no_grad():
+                logit = self.model(im)
+                _, prediction = torch.max(F.softmax(logit, 1),1)
+                accuracy += (prediction==lab).sum().item()/len(lab)
         accuracy /= len(test_loader)
         
         return accuracy
 
 
     def train_model(self, train_loader, test_loader, update_adv):
-        
+        self.model.to(self.device)
+        self.apt.to(self.device)
+        self.disc.to(self.device)
         for epoch in range(self.epochs):
             print(f'----------------------------EPOCH NUMBER {epoch}-------------------------')
             train_loss, train_acc = self.train_epoch(train_loader, update_adv)
