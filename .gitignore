@@ -14,5 +14,3 @@ __pycache__/
 # Ignora eventuali cartelle di librerie o dipendenze
 node_modules/
 data
-AUC.png
-Roc_CURVE.png

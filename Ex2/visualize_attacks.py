@@ -92,12 +92,8 @@ model_standard.load_state_dict(torch.load('Ex2/model_parameters/standard_CNN.pth
 loss = nn.CrossEntropyLoss()
 
 im, lab = next(iter(test_loader))
-path_fgsm = os.path.join(os.getcwd(), 'Ex2/images', 'fgsm_perturbed.png')
-path_pgd  = os.path.join(os.getcwd(), 'Ex2/images', 'pgd_perturbed.png')
 path_perturbed  = os.path.join(os.getcwd(), 'Ex2/images', 'perturbed.png')
 pgd_perturbed = PGD_perturbation(im, lab, model_standard, loss, alpha= 0.3, eps= 0.3, iter= 5)
-
-
 fgsm_perturbed = fgsm_perturbation(im, lab, model_standard, loss, eps = 0.3)
 
 plotting(im[0], fgsm_perturbed[0],pgd_perturbed[0], path_perturbed)
