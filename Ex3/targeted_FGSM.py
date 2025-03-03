@@ -27,9 +27,6 @@ transform = transforms.Compose([
             ])
 
 testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transform)
-torch.manual_seed(42)
-subset_indices = torch.randperm(len(testset))[:1000]
-subset_testset = Subset(testset, subset_indices)
 
 classes = ['airplane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
 denormalize = transforms.Normalize((-0.4914 / 0.2023, -0.4822 / 0.1994, -0.4465 / 0.2010), 
@@ -40,7 +37,7 @@ class FGSM_targeted():
         
         self.target_class = target_class
         self.model  = model
-        self.test_loader =  torch.utils.data.DataLoader(subset_testset, batch_size = 1, shuffle = False)  
+        self.test_loader =  torch.utils.data.DataLoader(testset, batch_size = 1, shuffle = False)  
         self.loss   = torch.nn.CrossEntropyLoss()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.examples = []
