@@ -83,3 +83,35 @@ To test the trained model, use the following command, you can choose among the 3
 ```bash
 python script.py --mode test --test_model <standard|jarn> --test <clean|fgsm|pgd>
 ```
+## **Targeted FGSM attack**
+
+<span style="font-size: 18px;">The Fast Gradient Sign Method (FGSM) is an adversarial attack technique that  modifies the inputs of a machine learning model in a way that tricks model into making an incorrect prediction. It does so by adding a small perturbation in the direction of the model’s gradients to the input image, maximizing the model's error. The Targeted version of FGSM that I developed in the following is a variant of this attack specifically designed to mislead the model into classifying an input as a target class chosen by the attacker. Results are reported both qualitatively by looking at the generated perturbed image that quantitatively studying the effects of perturbation magnitude parameters on some metrics, as shown below.
+
+<br><br>
+
+![visualize targeted attacks](Ex3/Results/Qualitative_Confront.png)
+
+<br><br>
+<span style="font-size: 18px;"> In the quantitative evaluation I started considering the model's accuracy on the perturbed images for different values of the epsilon parameter, as expected increasing the noise in the original image corresponds to a significative degradation of the performance. Never the less increasing the values of epsilon parameters comes at the cost of a greater 'distance' between the original and perturbed image, measured using the euclidean distance of the two images. It is interesting to note how the growth of the L2 norm can be used to explain the trend of the success rate curve of targeted adversarial attacks. In particular, when epsilon becomes too large, the perturbation may move the image out of the decision region where the model would classify it as the target class.
+
+<br><br>
+<p align="center">
+  <img src="Ex3/Results/Acuracy.png" width="300" >
+  <img src="Ex3/Results/Differences.png" width="300">
+  <img src="Ex3/Results/Quantitative_Confront.png" width="300">
+</p>
+
+<br><br>
+
+## Usage Instructions
+
+### Prerequisites
+torch
+
+### Running the Script
+The script supports two main modes: **quantitative** and **qualitative**.
+To run the code just use the command below with one of the two modes as argument.
+
+```bash
+python targeted_FGSM.py --mode <quantitative|qualitative>
+```
